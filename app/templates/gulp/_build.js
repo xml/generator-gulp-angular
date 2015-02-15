@@ -71,17 +71,20 @@ gulp.task('html', ['inject', 'partials'], function () {
     .pipe(gulp.dest(paths.dist + '/'))
     .pipe($.size({ title: paths.dist + '/', showFiles: true }));
 });
+<% if (imageMin) { %>
 
 gulp.task('images', function () {
-  return gulp.src(paths.src + '/assets/images/**/*')<% if (imageMin) { %>
+  return gulp.src(paths.src + '/assets/images/**/*')
     .pipe($.imagemin({
       optimizationLevel: 3,
       progressive: true,
       interlaced: true
-    }))<% } %>
+    }))
     .pipe(gulp.dest(paths.dist + '/assets/images/'));
 });
+<% } %>
 
+// Only applies for fonts from bower dependencies
 gulp.task('fonts', function () {
   var customFonts = gulp.src(paths.src + '/assets/fonts/**/*')
     .pipe(gulp.dest(paths.dist + '/assets/fonts/'));
@@ -94,15 +97,24 @@ gulp.task('fonts', function () {
   return merge(customFonts, bowerFonts);
 });
 
-gulp.task('misc', function () {
-  return gulp.src(paths.src + '/**/*.ico')
+gulp.task('other', function () {
+  return gulp.src([
+    paths.src + '/**/*',
+    '!' + paths.src + '/**/*.{<%= processedFileExtension %>}'
+  ])
     .pipe(gulp.dest(paths.dist + '/'));
 });
 
-gulp.task('clean'
-<% if (props.jsPreprocessor.key === 'typescript') { %>, ['tsd:purge']
-<% } %>, function (done) {
+<% if (props.jsPreprocessor.key === 'typescript') { %>
+gulp.task('clean', ['tsd:purge'], function (done) {
+<% } else { %>
+gulp.task('clean', function (done) {
+<% } %>
   $.del([paths.dist + '/', paths.tmp + '/'], done);
 });
 
-gulp.task('build', ['html', 'images', 'fonts', 'misc']);
+<% if (imageMin) { %>
+gulp.task('build', ['html', 'images', 'fonts', 'other']);
+<% } else { %>
+gulp.task('build', ['html', 'fonts', 'other']);
+<% } %>
