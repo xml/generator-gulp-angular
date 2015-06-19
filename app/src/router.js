@@ -11,19 +11,26 @@ module.exports = function(GulpAngularGenerator) {
 
     if (this.props.router.module === 'ngRoute') {
       this.routerHtml = '<div ng-view></div>';
-      this.routerJs = this.fs.read(this.templatePath('src/app/__ngroute.' + this.props.jsPreprocessor.extension));
+      this.files.push({
+        src: 'src/app/_ngroute/__ngroute.' + this.props.jsPreprocessor.srcExtension,
+        dest: 'src/app/index.route.' + this.props.jsPreprocessor.extension,
+        template: true
+      });
     } else if (this.props.router.module === 'ui.router') {
       this.routerHtml = '<div ui-view></div>';
-      this.routerJs = this.fs.read(this.templatePath('src/app/__uirouter.' + this.props.jsPreprocessor.extension));
+      this.files.push({
+        src: 'src/app/_uirouter/__uirouter.' + this.props.jsPreprocessor.srcExtension,
+        dest: 'src/app/index.route.' + this.props.jsPreprocessor.extension,
+        template: true
+      });
     } else {
       this.routerHtml = this.fs.read(this.templatePath(routerPartialSrc));
       this.routerHtml = this.routerHtml.replace(
-        /^<div class="container">/,
-        '<div class="container" ng-controller="MainCtrl">'
+        /^<div ([^>]*)>/,
+        '<div $1 ng-controller="MainController as main">'
       );
 
       this.routerHtml = this.routerHtml.replace(/\n/g, '\n    ');
-      this.routerJs = '';
     }
   };
 

@@ -1,37 +1,37 @@
-module <%= appName %> {
+module <%- appName %> {
   'use strict';
 
-  class Thing {
-    public rank: number;
-    public title: string;
-    public url: string;
-    public description: string;
-    public logo: string;
+  export class MainController {
+    public awesomeThings: ITecThing[];
+    public webDevTec: WebDevTecService;
+    public classAnimation: string;
 
-    constructor(title: string, url: string, description: string, logo: string) {
-      this.title = title;
-      this.url = url;
-      this.description = description;
-      this.logo = logo;
-      this.rank = Math.random();
-    }
-  }
-
-  interface IMainScope extends ng.IScope {
-    awesomeThings: Thing[]
-  }
-
-  export class MainCtrl {
     /* @ngInject */
-    constructor ($scope: IMainScope) {
-      var awesomeThings = <%= technologies %>;
+    constructor ($timeout: ng.ITimeoutService, webDevTec: WebDevTecService, toastr: Toastr) {
+      this.awesomeThings = new Array();
+      this.webDevTec = webDevTec;
+      this.classAnimation = '';
 
-      $scope.awesomeThings = new Array<Thing>();
+      this.activate($timeout);
+    }
 
-      awesomeThings.forEach(function(awesomeThing: Thing) {
-        $scope.awesomeThings.push(awesomeThing);
-      });
+    activate($timeout: ng.ITimeoutService) {
+      this.getWebDevTec();
+
+      var self = this;
+
+      $timeout(function() {
+        self.classAnimation = 'rubberBand';
+      }, 4000);
+    }
+
+    showToastr() {
+      toastr.info('Fork <a href="https://github.com/Swiip/generator-gulp-angular" target="_blank"><b>generator-gulp-angular</b></a>');
+      this.classAnimation = '';
+    }
+
+    getWebDevTec() {
+      this.awesomeThings = this.webDevTec.tec;
     }
   }
-
 }

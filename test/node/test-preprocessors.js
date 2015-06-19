@@ -25,39 +25,49 @@ describe('gulp-angular generator preprocessors script', function () {
       { src: 'gulp/scripts.js' },
       { src: 'gulp/markups.js' },
       { src: 'gulp/tsd.js' },
+      { src: 'index.constants.js' },
       { src: 'tsd.json' }
     ];
   });
 
-  describe('compute dependencies for the gulp inject task', function() {
-    it('should be empty if no preprocessors', function() {
+  describe('compute file extension processed by the generator', function() {
+    it('should clean up the list and join with ,', function() {
       generator.props = {
-        cssPreprocessor: { key: 'none' },
-        jsPreprocessor: { key: 'none' }
+        cssPreprocessor: { extension: null },
+        jsPreprocessor: { extension: 'js' },
+        htmlPreprocessor: { extension: 'jade' }
       };
-      generator.computeInjectTaskDeps();
-      generator.injectTaskDeps.length.should.be.equal(0);
+      generator.imageMin = true;
+      generator.computeProcessedFileExtension();
+      generator.processedFileExtension.should.be.equal('html,css,js,jade,jpg,png,gif,svg');
+
+      generator.imageMin = false;
+      generator.computeProcessedFileExtension();
+      generator.processedFileExtension.should.be.equal('html,css,js,jade');
+    });
+  });
+
+  describe('compute dependencies for the gulp watch task', function() {
+    it('should be inject if no es6 or html prepro', function() {
+      generator.props = {
+        jsPreprocessor: { srcExtension: 'notes6' },
+        htmlPreprocessor: { key: 'none' }
+      };
+      generator.computeWatchTaskDeps();
+      generator.watchTaskDeps.length.should.be.equal(1);
+      generator.watchTaskDeps[0].should.be.equal('\'inject\'');
     });
 
-    it('should be styles and scripts when there is preprocessors', function() {
+    it('should be inject, scripts:watch and markups when needed', function() {
       generator.props = {
-        cssPreprocessor: { key: 'not none' },
-        jsPreprocessor: { key: 'not none' }
+        jsPreprocessor: { srcExtension: 'es6' },
+        htmlPreprocessor: { key: 'notnone' }
       };
-      generator.computeInjectTaskDeps();
-      generator.injectTaskDeps.length.should.be.equal(2);
-      generator.injectTaskDeps[0].should.be.equal('\'styles\'');
-      generator.injectTaskDeps[1].should.be.equal('\'scripts\'');
-    });
-
-    it('should be browseridy for traceur', function() {
-      generator.props = {
-        cssPreprocessor: { key: 'none' },
-        jsPreprocessor: { key: 'traceur' }
-      };
-      generator.computeInjectTaskDeps();
-      generator.injectTaskDeps.length.should.be.equal(1);
-      generator.injectTaskDeps[0].should.be.equal('\'browserify\'');
+      generator.computeWatchTaskDeps();
+      generator.watchTaskDeps.length.should.be.equal(3);
+      generator.watchTaskDeps[0].should.be.equal('\'scripts:watch\'');
+      generator.watchTaskDeps[1].should.be.equal('\'markups\'');
+      generator.watchTaskDeps[2].should.be.equal('\'inject\'');
     });
   });
 
@@ -69,7 +79,7 @@ describe('gulp-angular generator preprocessors script', function () {
         htmlPreprocessor: { key: 'none' }
       };
       generator.rejectFiles();
-      generator.files.length.should.be.equal(0);
+      generator.files.length.should.be.equal(2);
     });
 
     it('should reject nothing if there is preprocessors including TypeScript', function() {
@@ -89,7 +99,7 @@ describe('gulp-angular generator preprocessors script', function () {
         jsPreprocessor: { key: 'coffee' }
       };
       generator.lintCopies();
-      generator.files[5].src.should.match(/coffeelint/);
+      generator.files[6].src.should.match(/coffeelint/);
     });
 
     it('should add tslint for typescript preprocessor', function() {
@@ -97,7 +107,30 @@ describe('gulp-angular generator preprocessors script', function () {
         jsPreprocessor: { key: 'typescript' }
       };
       generator.lintCopies();
-      generator.files[5].src.should.match(/tslint/);
+      generator.files[6].src.should.match(/tslint/);
+    });
+  });
+
+  describe('add travis files', function() {
+    it('should not add file if there is no travis env', function() {
+      process.env.TRAVIS = 'false';
+      generator.travisCopies();
+      generator.files.length.should.be.equal(6);
+    });
+
+    it('should not add file if travis but no typescript', function() {
+      process.env.TRAVIS = 'true';
+      generator.props = { jsPreprocessor: { key: 'not typescript' } };
+      generator.travisCopies();
+      generator.files.length.should.be.equal(6);
+    });
+
+    it('should add file if travis and typescript', function() {
+      process.env.TRAVIS = 'true';
+      generator.props = { jsPreprocessor: { key: 'typescript' } };
+      generator.travisCopies();
+      generator.files.length.should.be.equal(7);
+      generator.files[6].src.should.match(/tsdrc/);
     });
   });
 

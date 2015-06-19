@@ -1,38 +1,38 @@
 'use strict';
 
+var path = require('path');
 var gulp = require('gulp');
+var conf = require('./conf');
 
-var paths = gulp.paths;
+var browserSync = require('browser-sync');
 
 var $ = require('gulp-load-plugins')();
 
-gulp.task('styles', function () {
+var wiredep = require('wiredep').stream;
+var _ = require('lodash');
 
-<% if (props.cssPreprocessor.key === 'less') { %>
+gulp.task('styles', function () {
+<% if (props.cssPreprocessor.key === 'less') { -%>
   var lessOptions = {
-    paths: [
+    options: [
       'bower_components',
-      paths.src + '/app',
-      paths.src + '/components'
+      path.join(conf.paths.src, '/app')
     ]
   };
-<% } %>
-<% if (props.cssPreprocessor.extension === 'scss') { %>
+<% } if (props.cssPreprocessor.extension === 'scss') { -%>
   var sassOptions = {
     style: 'expanded'
   };
-<% } %>
+<% } -%>
 
   var injectFiles = gulp.src([
-    paths.src + '/{app,components}/**/*.<%= props.cssPreprocessor.extension %>',
-    '!' + paths.src + '/app/index.<%= props.cssPreprocessor.extension %>',
-    '!' + paths.src + '/app/vendor.<%= props.cssPreprocessor.extension %>'
+    path.join(conf.paths.src, '/app/**/*.<%- props.cssPreprocessor.extension %>'),
+    path.join('!' + conf.paths.src, '/app/index.<%- props.cssPreprocessor.extension %>')
   ], { read: false });
 
   var injectOptions = {
     transform: function(filePath) {
-      filePath = filePath.replace(paths.src + '/app/', '');
-      filePath = filePath.replace(paths.src + '/components/', '../components/');
+      filePath = filePath.replace(path.join(conf.paths.src, '/app/'), '');
       return '@import \'' + filePath + '\';';
     },
     starttag: '// injector',
@@ -40,29 +40,33 @@ gulp.task('styles', function () {
     addRootSlash: false
   };
 
-  var indexFilter = $.filter('index.<%= props.cssPreprocessor.extension %>');
+<% if (props.cssPreprocessor.key === 'ruby-sass') { -%>
+  var cssFilter = $.filter('**/*.css');
+<% } -%>
 
   return gulp.src([
-    paths.src + '/app/index.<%= props.cssPreprocessor.extension %>',
-    paths.src + '/app/vendor.<%= props.cssPreprocessor.extension %>'
+    path.join(conf.paths.src, '/app/index.<%- props.cssPreprocessor.extension %>')
   ])
-    .pipe(indexFilter)
     .pipe($.inject(injectFiles, injectOptions))
-    .pipe(indexFilter.restore())
-<% if (props.cssPreprocessor.key === 'less') { %>
-    .pipe($.less(lessOptions))
-<% } else if (props.cssPreprocessor.key === 'ruby-sass') { %>
-    .pipe($.rubySass(sassOptions))
-<% } else if (props.cssPreprocessor.key === 'node-sass') { %>
-    .pipe($.sass(sassOptions))
-<% } else if (props.cssPreprocessor.key === 'stylus') { %>
-    .pipe($.stylus())
-<% } %>
-
-  .pipe($.autoprefixer())
-    .on('error', function handleError(err) {
-      console.error(err.toString());
-      this.emit('end');
-    })
-    .pipe(gulp.dest(paths.tmp + '/serve/app/'));
+    .pipe(wiredep(_.extend({}, conf.wiredep)))
+<% if (props.cssPreprocessor.key === 'ruby-sass') { -%>
+    .pipe($.rubySass(sassOptions)).on('error', conf.errorHandler('RubySass'))
+    .pipe(cssFilter)
+    .pipe($.sourcemaps.init({ loadMaps: true }))
+<% } else { -%>
+    .pipe($.sourcemaps.init())
+<% } if (props.cssPreprocessor.key === 'less') { -%>
+    .pipe($.less(lessOptions)).on('error', conf.errorHandler('Less'))
+<% } else if (props.cssPreprocessor.key === 'node-sass') { -%>
+    .pipe($.sass(sassOptions)).on('error', conf.errorHandler('Sass'))
+<% } else if (props.cssPreprocessor.key === 'stylus') { -%>
+    .pipe($.stylus()).on('error', conf.errorHandler('Stylus'))
+<% } -%>
+    .pipe($.autoprefixer()).on('error', conf.errorHandler('Autoprefixer'))
+    .pipe($.sourcemaps.write())
+<% if (props.cssPreprocessor.key === 'ruby-sass') { -%>
+    .pipe(cssFilter.restore())
+<% } -%>
+    .pipe(gulp.dest(path.join(conf.paths.tmp, '/serve/app/')))
+    .pipe(browserSync.reload({ stream: true }));
 });

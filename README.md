@@ -1,6 +1,6 @@
 # generator-gulp-angular
 
-[![Build Status](https://img.shields.io/travis/Swiip/generator-gulp-angular.svg?style=flat)](http://travis-ci.org/Swiip/generator-gulp-angular)
+[![Build Status](https://img.shields.io/travis/Swiip/generator-gulp-angular/master.svg?style=flat)](http://travis-ci.org/Swiip/generator-gulp-angular)
 [![Coverage Status](http://img.shields.io/coveralls/Swiip/generator-gulp-angular.svg?style=flat)](https://coveralls.io/r/Swiip/generator-gulp-angular?branch=master)
 [![Dependencies](http://img.shields.io/david/Swiip/generator-gulp-angular.svg?style=flat)](https://david-dm.org/eleven-labs/generator-gulp-angular)
 [![Download Month](http://img.shields.io/npm/dm/generator-gulp-angular.svg?style=flat)](https://www.npmjs.org/package/generator-gulp-angular)
@@ -8,17 +8,9 @@
 [![Gitter](http://img.shields.io/badge/Gitter-room-brightgreen.svg?style=flat)](https://gitter.im/Swiip/generator-gulp-angular)
 [![Gratipay](http://img.shields.io/gratipay/Swiip.svg?style=flat)](https://gratipay.com/Swiip/)
 
-Offers you a Yeoman generator to initiate a Web application with the following workflow:
+Offers you a Yeoman generator to initiate a Web application with Angular powered by GulpJS.
 
-<img height="100" align="left" src="https://raw.githubusercontent.com/yeoman/yeoman.io/master/app/assets/img/bullet-yo.gif">
-
-<img height="100" align="left" src="https://raw.github.com/gulpjs/artwork/master/gulp.png">
-
-<img height="100" align="left" src="http://bower.io/img/bower-logo.png">
-
-<img height="100" align="left" src="https://s3.amazonaws.com/media-p.slid.es/uploads/hugojosefson/images/86267/angularjs-logo.png">
-
-<br><br><br><br>
+![Logo](app/templates/src/assets/images/generator-gulp-angular-logo-200x200.png)
 
 ## Why generator-gulp-angular ?
 
@@ -28,6 +20,8 @@ generator-gulp-angular scaffolds an AngularJS application with a full-featured g
 
 
 My intention is to create a generator that gives users total control over their development toolbox so they can immediately start projects with their preferred tools, such as specific UI frameworks or JavaScript preprocessors.
+
+This project is one of many things that you can use to get started on a new app.  For a comparison of the options and the trade-offs between them, please visit [this](http://www.dancancro.com/comparison-of-angularjs-application-starters) link.
 
 ## Usage
 
@@ -67,18 +61,21 @@ yo gulp-angular [app-name]
 * `--advanced` prompt for advanced additional features, default is `false`
 
 
-All paths configuration are stored in `gulpfile.js`. Change `gulp.paths` in `gulpfile.js` if you want to config paths after the app is generated.
+Paths configuration are stored in `gulpfile.js`. Change `options.(src|dist|tmp|e2e)` in `gulpfile.js` if you want to config paths after the app is generated.
+
+**Warning**: The paths are also written in the `index.html` for the build with useref. If you want to change these paths, you also have to change the paths there in order to have the build task working.
 
 ### Use Gulp tasks
 
 * `gulp` or `gulp build` to build an optimized version of your application in `/dist`
 * `gulp serve` to launch a browser sync server on your source files
 * `gulp serve:dist` to launch a server on your optimized application
-* `gulp wiredep` to fill bower dependencies in your `.html` file(s)
 * `gulp test` to launch your unit tests with Karma
 * `gulp test:auto` to launch your unit tests with Karma in watch mode
 * `gulp protractor` to launch your e2e tests with Protractor
 * `gulp protractor:dist` to launch your e2e tests with Protractor on the dist files
+
+More information on the gulp tasks in [this README.md](app/templates/gulp/README.md).
 
 ## Directory structure
 
@@ -88,6 +85,10 @@ The root directory generated for a app with name `gulpAngular` :
 <pre>
 ├──  src/
 │   ├──  app/
+│   │   ├──  components/
+│   │   │   └──  navbar/
+│   │   │   │   ├──  navbar.controller.js
+│   │   │   │   └──  navbar.html
 │   │   ├──  main/
 │   │   │   ├──  main.controller.js
 │   │   │   ├──  main.controller.spec.js
@@ -97,10 +98,6 @@ The root directory generated for a app with name `gulpAngular` :
 │   │   └──  vendor.(css|less|scss)
 │   ├──  assets/
 │   │   └──  images/
-│   ├──  components/
-│   │   └──  navbar/
-│   │   │   ├──  navbar.controller.js
-│   │   │   └──  navbar.html
 │   ├──  404.html
 │   ├──  favico.ico
 │   └──  index.html
@@ -142,16 +139,10 @@ The root directory generated for a app with name `gulpAngular` :
 * *UI Framework*: Bootstrap, Foundation, Angular Material, none (depends on the chosen CSS preprocessor)
 * *UI directives* : UI Bootstrap, Angular Strap, official Bootstrap JavaScript, Angular Foundation, official Foundation JavaScript, none (depends on the UI framework)
 * *CSS pre-processor*: Less, Sass with Ruby and Node, Stylus, none
-* *JS preprocessor*: CoffeeScript, TypeScript, ECMAScript 6 (Traceur and 6to5), none
+* *JS preprocessor*: CoffeeScript, TypeScript, ECMAScript 6 (Traceur and Babel), none
 * *HTML preprocessor*: Jade, Haml, Handlebars, none
-* **TODO** Script loader: Require, Browserify, none
+* **TODO** Script loader: Require, Webpack, none
 * **TODO** Test framework: Jasmine, Mocha, Qunit
-
-## Known issue
-
-Protractor tests are not stable with PhantomJS, at least not on my Mac. I'm getting unpredictable disconnections between webdriverjs and phantomjs.
-
-I tried many configurations for Protractor without success, any hint would be appreciated.
 
 ## Changelog
 

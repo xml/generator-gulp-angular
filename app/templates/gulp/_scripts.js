@@ -1,85 +1,92 @@
 'use strict';
 
+var path = require('path');
 var gulp = require('gulp');
+var conf = require('./conf');
 
-<% if (props.jsPreprocessor.key === 'typescript') { %>
-var mkdirp = require('mkdirp');
-<% } if (props.jsPreprocessor.srcExtension === 'es6') { %>
-var browserify = require('browserify');
-var source = require('vinyl-source-stream');
-var buffer = require('vinyl-buffer');
-<% } if (props.jsPreprocessor.key === '6to5') { %>
-var to5ify = require('6to5ify');
-<% } %>
-
-var paths = gulp.paths;
+var browserSync = require('browser-sync');
 
 var $ = require('gulp-load-plugins')();
 
-<% if (props.jsPreprocessor.key === 'typescript') { %>
-gulp.task('scripts', ['tsd:install'], function () {
-  mkdirp.sync(paths.tmp);
+<% if (props.jsPreprocessor.srcExtension !== 'es6') { -%>
+<%   if (props.jsPreprocessor.key === 'typescript') { -%>
+  var tsProject = $.typescript.createProject({
+    target: 'es5',
+    sortOutput: true
+  });
 
-<% } else { %>
+  gulp.task('scripts', ['tsd:install'], function () {
+<%   } else { -%>
 gulp.task('scripts', function () {
-<% } %>
-<% if (props.jsPreprocessor.key !== '6to5') { %>
-  return gulp.src(paths.src + '/{app,components}/**/*.<%= props.jsPreprocessor.extension %>')
-<%   if (props.jsPreprocessor.extension === 'js') { %>
+<%   } -%>
+  return gulp.src(path.join(conf.paths.src, '/app/**/*.<%- props.jsPreprocessor.extension %>'))
+<%   if (props.jsPreprocessor.extension === 'js') { -%>
     .pipe($.jshint())
     .pipe($.jshint.reporter('jshint-stylish'))
-<%   } if (props.jsPreprocessor.key !== 'none') { %>
+<%   } if (props.jsPreprocessor.key !== 'none') { -%>
     .pipe($.sourcemaps.init())
-<%   } if (props.jsPreprocessor.key === 'traceur') { %>
-    .pipe($.traceur())
-    .on('error', gulp.errorHandler('Traceur'))
-<%   } if (props.jsPreprocessor.key === 'coffee') { %>
+<%   } if (props.jsPreprocessor.key === 'coffee') { -%>
     .pipe($.coffeelint())
     .pipe($.coffeelint.reporter())
-    .pipe($.coffee())
-    .on('error', gulp.errorHandler('CoffeeScript'))
-<%   } if (props.jsPreprocessor.key === 'typescript') { %>
+    .pipe($.coffee()).on('error', conf.errorHandler('CoffeeScript'))
+<%   } if (props.jsPreprocessor.key === 'typescript') { -%>
     .pipe($.tslint())
     .pipe($.tslint.report('prose', { emitError: false }))
-    .pipe($.typescript({sortOutput: true}))
-    .on('error', gulp.errorHandler('TypeScript'))
-<%   } %>
-<%   if (props.jsPreprocessor.key !== 'none') { %>
+    .pipe($.typescript(tsProject)).on('error', conf.errorHandler('TypeScript'))
+    .pipe($.concat('index.module.js'))
+<%   } if (props.jsPreprocessor.key !== 'none') { -%>
     .pipe($.sourcemaps.write())
-<%   } %>
-<%   if (props.jsPreprocessor.key === 'typescript') { %>
-    .pipe($.toJson({filename: paths.tmp + '/sortOutput.json', relative:true}))
-<%   } %>
-<%   if (props.jsPreprocessor.key === 'traceur') { %>
-    .pipe(gulp.dest(paths.tmp + '/traceur'))
-<%   } else if (props.jsPreprocessor.key !== 'none') { %>
-    .pipe(gulp.dest(paths.tmp + '/serve/'))
-<%   } %>
-    .pipe($.size());
-<% } else { %>
-  return browserify({ debug: true })
-    .add('./' + paths.src + '/app/index.js')
-    .transform(to5ify)
-    .bundle()
-    .on('error', gulp.errorHandler('Browserify'))
-    .pipe(source('index.js'))
-    .pipe(buffer())
-    .pipe($.sourcemaps.init({ loadMaps: true }))
-    .pipe($.sourcemaps.write())
-    .pipe(gulp.dest(paths.tmp + '/serve/app'));
-<% } %>
+    .pipe(gulp.dest(path.join(conf.paths.tmp, '/serve/app')))
+<%   } -%>
+    .pipe(browserSync.reload({ stream: true }))
+    .pipe($.size())
+});
+<% } else { -%>
+function webpack(watch, callback) {
+  var webpackOptions = {
+    watch: watch,
+    module: {
+      preLoaders: [{ test: /\.js$/, exclude: /node_modules/, loader: 'jshint-loader'}],
+<%   if (props.jsPreprocessor.key === 'babel') { -%>
+      loaders: [{ test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader'}]
+<%   } if (props.jsPreprocessor.key === 'traceur') { -%>
+      loaders: [{ test: /\.js$/, exclude: /node_modules/, loader: 'traceur-loader'}]
+<%   } -%>
+    },
+    output: { filename: 'index.module.js' }
+  };
+
+  if(watch) {
+    webpackOptions.devtool = 'inline-source-map';
+  }
+
+  var webpackChangeHandler = function(err, stats) {
+    if(err) {
+      conf.errorHandler('Webpack')(err);
+    }
+    $.util.log(stats.toString({
+      colors: $.util.colors.supportsColor,
+      chunks: false,
+      hash: false,
+      version: false
+    }));
+    browserSync.reload();
+    if(watch) {
+      watch = false;
+      callback();
+    }
+  };
+
+  return gulp.src(path.join(conf.paths.src, '/app/index.module.js'))
+    .pipe($.webpack(webpackOptions, null, webpackChangeHandler))
+    .pipe(gulp.dest(path.join(conf.paths.tmp, '/serve/app')));
+}
+
+gulp.task('scripts', function () {
+  return webpack(false);
 });
 
-<% if (props.jsPreprocessor.key === 'traceur') { %>
-gulp.task('browserify', ['scripts'], function () {
-  return browserify({ debug: true })
-    .add('./' + paths.tmp + '/<%= props.jsPreprocessor.key %>/app/index.js')
-    .bundle()
-    .on('error', gulp.errorHandler('Browserify'))
-    .pipe(source('index.js'))
-    .pipe(buffer())
-    .pipe($.sourcemaps.init({ loadMaps: true }))
-    .pipe($.sourcemaps.write())
-    .pipe(gulp.dest(paths.tmp + '/serve/app'));
+gulp.task('scripts:watch', ['scripts'], function (callback) {
+  return webpack(true, callback);
 });
-<% } %>
+<% } -%>

@@ -11,21 +11,42 @@ function rejectWithRegexp(regexp) {
 module.exports = function(GulpAngularGenerator) {
 
   /**
+   * List files extension processed by the generator
+   */
+  GulpAngularGenerator.prototype.computeProcessedFileExtension = function computeProcessedFileExtension() {
+    this.processedFileExtension = [
+      'html',
+      'css',
+      'js',
+      this.props.cssPreprocessor.extension,
+      this.props.jsPreprocessor.extension,
+      this.props.htmlPreprocessor.extension
+    ];
+    if (this.imageMin) {
+      this.processedFileExtension = this.processedFileExtension.concat(['jpg', 'png', 'gif', 'svg']);
+    }
+    this.processedFileExtension = _.chain(this.processedFileExtension)
+      .uniq()
+      .filter(_.isString)
+      .value()
+      .join(',');
+  };
+
+  /**
    * Compute gulp inject task dependencies depending on js and css preprocessors
    */
-  GulpAngularGenerator.prototype.computeInjectTaskDeps = function computeInjectTaskDeps() {
-    this.injectTaskDeps = [];
-    if (this.props.cssPreprocessor.key !== 'none') {
-      this.injectTaskDeps.push('\'styles\'');
+  GulpAngularGenerator.prototype.computeWatchTaskDeps = function computeInjectTaskDeps() {
+    this.watchTaskDeps = [];
+
+    if (this.props.jsPreprocessor.srcExtension === 'es6') {
+      this.watchTaskDeps.push('\'scripts:watch\'');
     }
 
-    if (this.props.jsPreprocessor.key !== 'none') {
-      if (this.props.jsPreprocessor.key === 'traceur') {
-        this.injectTaskDeps.push('\'browserify\'');
-      } else {
-        this.injectTaskDeps.push('\'scripts\'');
-      }
+    if (this.props.htmlPreprocessor.key !== 'none') {
+      this.watchTaskDeps.push('\'markups\'');
     }
+
+    this.watchTaskDeps.push('\'inject\'');
   };
 
   /**
@@ -38,13 +59,13 @@ module.exports = function(GulpAngularGenerator) {
         rejectWithRegexp.call(this, /styles\.js/);
       }
 
-      if(this.props.jsPreprocessor.key === 'none') {
-        rejectWithRegexp.call(this, /scripts\.js/);
-      }
-
       if(this.props.jsPreprocessor.key !== 'typescript') {
         rejectWithRegexp.call(this, /tsd\.js/);
         rejectWithRegexp.call(this, /tsd\.json/);
+      }
+
+      if(this.props.jsPreprocessor.srcExtension === 'es6' || this.props.jsPreprocessor.key === 'typescript') {
+        rejectWithRegexp.call(this, /index\.constants\.js/);
       }
 
       if(this.props.htmlPreprocessor.key === 'none') {
@@ -70,6 +91,24 @@ module.exports = function(GulpAngularGenerator) {
         dest: 'tslint.json',
         template: false
       });
+    }
+  };
+
+  /**
+   * Copy additional files for Travis
+   */
+  GulpAngularGenerator.prototype.travisCopies = function travisCopies() {
+    if(process.env.TRAVIS === 'true') {
+
+      // Avoid rate limit by GithubAPI
+      if(this.props.jsPreprocessor.key === 'typescript') {
+
+        this.files.push({
+          src: '.tsdrc',
+          dest: '.tsdrc',
+          template: false
+        });
+      }
     }
   };
 

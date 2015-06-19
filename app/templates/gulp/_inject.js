@@ -1,68 +1,52 @@
 'use strict';
 
+var path = require('path');
 var gulp = require('gulp');
-
-var paths = gulp.paths;
+var conf = require('./conf');
 
 var $ = require('gulp-load-plugins')();
 
 var wiredep = require('wiredep').stream;
+var _ = require('lodash');
 
-<% if (_.isEmpty(injectTaskDeps)) { %>
-gulp.task('inject', function () {
-<% } else { %>
-gulp.task('inject', [<%= injectTaskDeps.join(', ') %>], function () {
-<% } %>
-
+<% if (props.cssPreprocessor.key !== 'none') { -%>
+gulp.task('inject', ['scripts', 'styles'], function () {
   var injectStyles = gulp.src([
-<% if (props.cssPreprocessor.key !== 'none') { %>
-    paths.tmp + '/serve/{app,components}/**/*.css',
-    '!' + paths.tmp + '/serve/app/vendor.css'
-<% } else { %>
-    paths.src + '/{app,components}/**/*.css'
-<% } %>
+    path.join(conf.paths.tmp, '/serve/app/**/*.css'),
+    path.join('!' + conf.paths.tmp, '/serve/app/vendor.css')
   ], { read: false });
-
-<% if (props.jsPreprocessor.srcExtension === 'ts') { %>
-  var sortOutput = require('../' + paths.tmp + '/sortOutput.json');
-<% } %>
+<% } else { -%>
+gulp.task('inject', ['scripts'], function () {
+  var injectStyles = gulp.src([
+    path.join(conf.paths.src, '/app/**/*.css')
+  ], { read: false });
+<% } -%>
 
   var injectScripts = gulp.src([
-<% if (props.jsPreprocessor.key === 'none') { %>
-    paths.src + '/{app,components}/**/*.js',
-<% } else if (props.jsPreprocessor.extension === 'js') { %>
-    paths.tmp + '/serve/{app,components}/**/*.js',
-<% } else { %>
-    '{' + paths.src + ',' + paths.tmp + '/serve}/{app,components}/**/*.js',
-<% } %>
-    '!' + paths.src + '/{app,components}/**/*.spec.js',
-    '!' + paths.src + '/{app,components}/**/*.mock.js'
-<% if (props.jsPreprocessor.srcExtension === 'ts') { %>
-  ], { read: false })
-  .pipe($.order(sortOutput, {base: paths.tmp + '/serve'}));
-<% } else if (props.jsPreprocessor.srcExtension !== 'es6') { %>
+<% if (props.jsPreprocessor.srcExtension !== 'es6') { -%>
+    path.join(conf.paths.src, '/app/**/*.module.js'),
+    path.join(conf.paths.src, '/app/**/*.js'),
+<% } if (props.jsPreprocessor.key !== 'none') { -%>
+    path.join(conf.paths.tmp, '/serve/app/**/*.module.js'),
+    path.join(conf.paths.tmp, '/serve/app/**/*.js'),
+<% } -%>
+    path.join('!' + conf.paths.src, '/app/**/*.spec.js'),
+    path.join('!' + conf.paths.src, '/app/**/*.mock.js')
+<% if (props.jsPreprocessor.srcExtension === 'js' || props.jsPreprocessor.srcExtension === 'coffee') { -%>
   ])
-  .pipe($.angularFilesort());
-<% } else { %>
+  .pipe($.angularFilesort()).on('error', conf.errorHandler('AngularFilesort'));
+<% } else { -%>
   ], { read: false });
-<% } %>
+<% } -%>
 
   var injectOptions = {
-    ignorePath: [paths.src, paths.tmp + '/serve'],
+    ignorePath: [conf.paths.src, path.join(conf.paths.tmp, '/serve')],
     addRootSlash: false
   };
 
-  var wiredepOptions = {
-    directory: 'bower_components'
-<% if(wiredepExclusions.length > 0) { %>,
-    exclude: [<%= wiredepExclusions.join(', ') %>]
-<% } %>
-  };
-
-  return gulp.src(paths.src + '/*.html')
+  return gulp.src(path.join(conf.paths.src, '/*.html'))
     .pipe($.inject(injectStyles, injectOptions))
     .pipe($.inject(injectScripts, injectOptions))
-    .pipe(wiredep(wiredepOptions))
-    .pipe(gulp.dest(paths.tmp + '/serve'));
-
+    .pipe(wiredep(_.extend({}, conf.wiredep)))
+    .pipe(gulp.dest(path.join(conf.paths.tmp, '/serve')));
 });
